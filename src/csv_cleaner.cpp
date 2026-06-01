@@ -6,14 +6,47 @@
 
 using namespace std;
 
+namespace {
+void intentarParsearNodo(const string& linea, Nodo& nodo) {
+    stringstream flujo(linea);
+    string token;
+
+    getline(flujo, token, ',');
+    nodo.nodeId = stoi(limpiarEspacios(token));
+    getline(flujo, token, ',');
+    nodo.latitud = stod(limpiarEspacios(token));
+    getline(flujo, token, ',');
+    nodo.longitud = stod(limpiarEspacios(token));
+}
+
+void intentarParsearArista(const string& linea, Arista& arista) {
+    stringstream flujo(linea);
+    string token;
+
+    getline(flujo, token, ',');
+    arista.osmWayId = stoll(limpiarEspacios(token));
+    getline(flujo, token, ',');
+    arista.nodeIdOrigen = stoi(limpiarEspacios(token));
+    getline(flujo, token, ',');
+    arista.nodeIdDestino = stoi(limpiarEspacios(token));
+    getline(flujo, token, ',');
+    arista.distanciaMetros = stod(limpiarEspacios(token));
+    getline(flujo, token, ',');
+    arista.claseVia = limpiarEspacios(token);
+    getline(flujo, token, ',');
+    arista.unSoloSentido = stoi(limpiarEspacios(token)) != 0;
+    getline(flujo, token, ',');
+    arista.velocidadMaximaKmh = parsearVelocidadMaxima(limpiarEspacios(token));
+}
+}
+
 string limpiarEspacios(string texto) {
     size_t inicio = texto.find_first_not_of(" \t\r\n");
     size_t fin = texto.find_last_not_of(" \t\r\n");
     return (inicio == string::npos) ? "" : texto.substr(inicio, fin - inicio + 1);
 }
 
-double parsearVelocidadMaxima(string texto)
-{
+double parsearVelocidadMaxima(string texto) {
     if (texto.empty()) return 0.0;
     try {
         return stod(texto);
@@ -37,99 +70,69 @@ double obtenerVelocidadPorDefecto(string claseVia) {
     return 20.0;
 }
 
-bool cargarNodos(string rutaArchivo, vector<Nodo>& nodos) {
+bool cargarNodos(const string& rutaArchivo, vector<Nodo>& nodos, EstadisticasCarga& estadisticas) {
     ifstream archivo(rutaArchivo);
     if (!archivo.is_open()) {
-        cout << "No se pudo abrir el archivo: " << rutaArchivo << endl;
+        cerr << "No se pudo abrir el archivo: " << rutaArchivo << endl;
         return false;
     }
 
     string linea;
     getline(archivo, linea);
-    int descartados = 0;
-    while (getline(archivo, linea))
-    {
-        if (linea.empty()) continue;
-        stringstream flujo(linea);
-        string token;
-        Nodo nodo;
-
-        try {
-            getline(flujo, token, ',');
-            nodo.id = stoi(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            nodo.lat = stod(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            nodo.lon = stod(limpiarEspacios(token));
-        }
-        catch (...) {
-            descartados++;
+    while (getline(archivo, linea)) {
+        if (linea.empty()) {
             continue;
         }
-        nodos.push_back(nodo);
-    }
 
-    cout << "Nodos cargados: " << nodos.size() << endl;
-    cout << "Nodos Descartados: " << descartados << endl;
+        Nodo nodo;
+        try {
+            intentarParsearNodo(linea, nodo);
+        }
+        catch (...) {
+            estadisticas.registrosDescartados++;
+            continue;
+        }
+
+        nodos.push_back(nodo);
+        estadisticas.registrosCargados++;
+    }
     return true;
 }
 
-bool cargarAristas(string rutaArchivo, vector<Arista>& aristas) {
+bool cargarAristas(const string& rutaArchivo, vector<Arista>& aristas, EstadisticasCarga& estadisticas) {
     ifstream archivo(rutaArchivo);
     if (!archivo.is_open()) {
-        cout << "No se pudo abrir el archivo: " << rutaArchivo << endl;
+        cerr << "No se pudo abrir el archivo: " << rutaArchivo << endl;
         return false;
     }
 
     string linea;
     getline(archivo, linea);
-    int descartados = 0;
     while (getline(archivo, linea)) {
-        if (linea.empty()) continue;
+        if (linea.empty()) {
+            continue;
+        }
 
-        stringstream flujo(linea);
-        string token;
         Arista arista;
-
         try {
-            getline(flujo, token, ',');
-            arista.idOsm = stoll(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            arista.idOrigen = stoi(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            arista.idDestino = stoi(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            arista.distanciaMetros = stod(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            arista.claseVia = limpiarEspacios(token);
-            getline(flujo, token, ',');
-            arista.esUnSoloSentido = stoi(limpiarEspacios(token));
-            getline(flujo, token, ',');
-            arista.velocidadMaxima = parsearVelocidadMaxima(limpiarEspacios(token));
+            intentarParsearArista(linea, arista);
         }
         catch (...) {
-            descartados++;
+            estadisticas.registrosDescartados++;
             continue;
         }
 
-        if (arista.distanciaMetros <= 0.0) {
-            descartados++;
+        if (arista.distanciaMetros <= 0.0 || arista.nodeIdOrigen == arista.nodeIdDestino) {
+            estadisticas.registrosDescartados++;
             continue;
         }
 
-        if (arista.idOrigen == arista.idDestino) {
-            descartados++;
-            continue;
-        }
-
-        if (arista.velocidadMaxima <= 0.0) {
-            arista.velocidadMaxima = obtenerVelocidadPorDefecto(arista.claseVia);
+        if (arista.velocidadMaximaKmh <= 0.0) {
+            arista.velocidadMaximaKmh = obtenerVelocidadPorDefecto(arista.claseVia);
         }
 
         aristas.push_back(arista);
+        estadisticas.registrosCargados++;
     }
-
-    cerr << "Aristas cargadas: " << aristas.size() << endl;
-    cerr << "Descartados: " << descartados << endl;
     return true;
 }

@@ -37,23 +37,109 @@ void mostrarVistaPreviaRuta(const vector<int>& recorridoNodeIds) {
     cout << '\n';
 }
 
+void mostrarEstadisticasCarga(const string& etiqueta, const EstadisticasCarga& estadisticas) {
+    cerr << etiqueta << " cargados: " << estadisticas.registrosCargados << '\n';
+    cerr << etiqueta << " descartados: " << estadisticas.registrosDescartados << '\n';
+}
+
+int leerNodeId(const string& mensaje) {
+    int nodeId = 0;
+    cout << mensaje;
+    cin >> nodeId;
+    return nodeId;
+}
+
+void ejecutarAnalisisAlcance(const AlgoritmosGrafo& algoritmos) {
+    const int nodeIdOrigen = leerNodeId("Ingresa node_id origen: ");
+    const TimePoint tiempoInicio = Clock::now();
+    const ResultadoAlcance resultado = algoritmos.calcularAlcanceVehicular(nodeIdOrigen);
+    const TimePoint tiempoFin = Clock::now();
+
+    cout << fixed << setprecision(2);
+    cout << "Origen: " << resultado.nodeIdOrigen << '\n';
+    cout << "Nodos alcanzables en <= 5 km: " << resultado.cantidadAlcanzable << '\n';
+    cout << "Porcentaje del grafo: " << resultado.porcentaje << "%\n";
+    cerr << "Tiempo alcance vehicular: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+}
+
+void ejecutarAnalisisComponentes(const AlgoritmosGrafo& algoritmos) {
+    const TimePoint tiempoInicio = Clock::now();
+    const ResultadoComponentes resultado = algoritmos.calcularComponentesDebilmenteConexas();
+    const TimePoint tiempoFin = Clock::now();
+
+    cout << "Numero total de islas/componentes: " << resultado.cantidadComponentes << '\n';
+    cout << "Tamano de la componente principal: " << resultado.tamanoComponenteGigante << '\n';
+    cerr << "Tiempo componentes: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+}
+
+void ejecutarAnalisisDiametro(const AlgoritmosGrafo& algoritmos) {
+    const TimePoint tiempoInicio = Clock::now();
+    const ResultadoDiametro resultado = algoritmos.calcularDiametroVial();
+    const TimePoint tiempoFin = Clock::now();
+
+    cout << fixed << setprecision(2);
+    cout << "Par mas alejado en la componente gigante:\n";
+    cout << "Origen: " << resultado.nodeIdOrigen << '\n';
+    cout << "Destino: " << resultado.nodeIdDestino << '\n';
+    cout << "Distancia minima entre ambos: " << resultado.distanciaMetros << " m\n";
+    cerr << "Tiempo diametro vial: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+}
+
+void ejecutarAnalisisMst(const AlgoritmosGrafo& algoritmos) {
+    const TimePoint tiempoInicio = Clock::now();
+    const ResultadoMst resultado = algoritmos.calcularRedEmergenciaMinima();
+    const TimePoint tiempoFin = Clock::now();
+
+    cout << fixed << setprecision(2);
+    cout << "Componente gigante: " << resultado.tamanoComponenteGigante << " nodos\n";
+    cout << "Aristas usadas en el MST: " << resultado.aristasUsadas << '\n';
+    cout << "Distancia total cubierta: " << resultado.distanciaTotalMetros / 1000.0 << " km\n";
+    cerr << "Tiempo MST: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+}
+
+void ejecutarComparacionRutas(const AlgoritmosGrafo& algoritmos) {
+    const int nodeIdOrigen = leerNodeId("Ingresa node_id origen: ");
+    const int nodeIdDestino = leerNodeId("Ingresa node_id destino: ");
+
+    const TimePoint tiempoInicio = Clock::now();
+    const ResultadoRutas resultado = algoritmos.compararRutas(nodeIdOrigen, nodeIdDestino);
+    const TimePoint tiempoFin = Clock::now();
+
+    cout << fixed << setprecision(2);
+    cout << "Ruta minima por DISTANCIA\n";
+    cout << "Distancia: " << resultado.rutaPorDistancia.distanciaMetros / 1000.0 << " km\n";
+    cout << "Tiempo estimado: " << resultado.rutaPorDistancia.tiempoSegundos / 60.0 << " min\n";
+    mostrarVistaPreviaRuta(resultado.rutaPorDistancia.recorridoNodeIds);
+    cout << '\n';
+
+    cout << "Ruta minima por TIEMPO\n";
+    cout << "Tiempo: " << resultado.rutaPorTiempo.tiempoSegundos / 60.0 << " min\n";
+    cout << "Distancia recorrida: " << resultado.rutaPorTiempo.distanciaMetros / 1000.0 << " km\n";
+    mostrarVistaPreviaRuta(resultado.rutaPorTiempo.recorridoNodeIds);
+    cerr << "Tiempo comparacion de rutas: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+}
+
 int main() {
     const string rutaNodos = "C:\\Users\\Santiago\\Desktop\\Universidad\\V SEMESTRE\\ANALISIS\\nodes.csv";
     const string rutaAristas = "C:\\Users\\Santiago\\Desktop\\Universidad\\V SEMESTRE\\ANALISIS\\edges.csv";
 
     vector<Nodo> nodos;
     vector<Arista> aristas;
+    EstadisticasCarga estadisticasNodos;
+    EstadisticasCarga estadisticasAristas;
 
     cerr << "===== CARGANDO DATOS =====" << endl;
     const TimePoint tiempoInicioTotal = Clock::now();
     const TimePoint tiempoInicioCarga = Clock::now();
-    if (!cargarNodos(rutaNodos, nodos)) {
+    if (!cargarNodos(rutaNodos, nodos, estadisticasNodos)) {
         return 1;
     }
-    if (!cargarAristas(rutaAristas, aristas)) {
+    if (!cargarAristas(rutaAristas, aristas, estadisticasAristas)) {
         return 1;
     }
     const TimePoint tiempoFinCarga = Clock::now();
+    mostrarEstadisticasCarga("Nodos", estadisticasNodos);
+    mostrarEstadisticasCarga("Aristas", estadisticasAristas);
     cerr << "Tiempo de carga: " << fixed << setprecision(2) << tiempoTranscurridoMs(tiempoInicioCarga, tiempoFinCarga) << " ms" << endl;
 
     cerr << "===== CONSTRUYENDO GRAFO =====" << endl;
@@ -79,83 +165,21 @@ int main() {
 
     try {
         switch (opcion) {
-        case 1: {
-            int nodeIdOrigen = 0;
-            cout << "Ingresa node_id origen: ";
-            cin >> nodeIdOrigen;
-
-            const TimePoint tiempoInicio = Clock::now();
-            const ResultadoAlcance resultado = algoritmos.calcularAlcanceVehicular(nodeIdOrigen);
-            const TimePoint tiempoFin = Clock::now();
-
-            cout << fixed << setprecision(2);
-            cout << "Origen: " << resultado.nodeIdOrigen << '\n';
-            cout << "Nodos alcanzables en <= 5 km: " << resultado.cantidadAlcanzable << '\n';
-            cout << "Porcentaje del grafo: " << resultado.porcentaje << "%\n";
-            cerr << "Tiempo alcance vehicular: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+        case 1:
+            ejecutarAnalisisAlcance(algoritmos);
             break;
-        }
-        case 2: {
-            const TimePoint tiempoInicio = Clock::now();
-            const ResultadoComponentes resultado = algoritmos.calcularComponentesDebilmenteConexas();
-            const TimePoint tiempoFin = Clock::now();
-
-            cout << "Numero total de islas/componentes: " << resultado.cantidadComponentes << '\n';
-            cout << "Tamano de la componente principal: " << resultado.tamanoComponenteGigante << '\n';
-            cerr << "Tiempo componentes: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+        case 2:
+            ejecutarAnalisisComponentes(algoritmos);
             break;
-        }
-        case 3: {
-            const TimePoint tiempoInicio = Clock::now();
-            const ResultadoDiametro resultado = algoritmos.calcularDiametroVial();
-            const TimePoint tiempoFin = Clock::now();
-
-            cout << fixed << setprecision(2);
-            cout << "Par mas alejado en la componente gigante:\n";
-            cout << "Origen: " << resultado.nodeIdOrigen << '\n';
-            cout << "Destino: " << resultado.nodeIdDestino << '\n';
-            cout << "Distancia minima entre ambos: " << resultado.distanciaMetros << " m\n";
-            cerr << "Tiempo diametro vial: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+        case 3:
+            ejecutarAnalisisDiametro(algoritmos);
             break;
-        }
-        case 4: {
-            const TimePoint tiempoInicio = Clock::now();
-            const ResultadoMst resultado = algoritmos.calcularRedEmergenciaMinima();
-            const TimePoint tiempoFin = Clock::now();
-
-            cout << fixed << setprecision(2);
-            cout << "Componente gigante: " << resultado.tamanoComponenteGigante << " nodos\n";
-            cout << "Aristas usadas en el MST: " << resultado.aristasUsadas << '\n';
-            cout << "Distancia total cubierta: " << resultado.distanciaTotalMetros / 1000.0 << " km\n";
-            cerr << "Tiempo MST: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+        case 4:
+            ejecutarAnalisisMst(algoritmos);
             break;
-        }
-        case 5: {
-            int nodeIdOrigen = 0;
-            int nodeIdDestino = 0;
-            cout << "Ingresa node_id origen: ";
-            cin >> nodeIdOrigen;
-            cout << "Ingresa node_id destino: ";
-            cin >> nodeIdDestino;
-
-            const TimePoint tiempoInicio = Clock::now();
-            const ResultadoRutas resultado = algoritmos.compararRutas(nodeIdOrigen, nodeIdDestino);
-            const TimePoint tiempoFin = Clock::now();
-
-            cout << fixed << setprecision(2);
-            cout << "Ruta minima por DISTANCIA\n";
-            cout << "Distancia: " << resultado.rutaPorDistancia.distanciaMetros / 1000.0 << " km\n";
-            cout << "Tiempo estimado: " << resultado.rutaPorDistancia.tiempoSegundos / 60.0 << " min\n";
-            mostrarVistaPreviaRuta(resultado.rutaPorDistancia.recorridoNodeIds);
-            cout << '\n';
-
-            cout << "Ruta minima por TIEMPO\n";
-            cout << "Tiempo: " << resultado.rutaPorTiempo.tiempoSegundos / 60.0 << " min\n";
-            cout << "Distancia recorrida: " << resultado.rutaPorTiempo.distanciaMetros / 1000.0 << " km\n";
-            mostrarVistaPreviaRuta(resultado.rutaPorTiempo.recorridoNodeIds);
-            cerr << "Tiempo comparacion de rutas: " << tiempoTranscurridoMs(tiempoInicio, tiempoFin) << " ms" << endl;
+        case 5:
+            ejecutarComparacionRutas(algoritmos);
             break;
-        }
         default:
             cerr << "Opcion invalida" << endl;
             return 1;

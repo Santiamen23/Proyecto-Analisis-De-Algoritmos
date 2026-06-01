@@ -7,29 +7,34 @@
 
 using namespace std;
 
+using ListaAdyacencia = vector<vector<AristaAdyacente>>;
+
 class Grafo {
 private:
     vector<Nodo> nodos;
     vector<Arista> aristas;
-    vector<vector<EntradaAdyacencia>> adyDist;
-    vector<vector<EntradaAdyacencia>> adyTiempo;
-    vector<vector<EntradaAdyacencia>> adyNoDir;
-    unordered_map<int, int> indPorNodeId;
+    ListaAdyacencia adyacenciaDistancia;
+    ListaAdyacencia adyacenciaTiempo;
+    ListaAdyacencia adyacenciaNoDirigida;
+    unordered_map<int, int> indicePorNodeId;
+
+    void reconstruirIndiceNodos();
+    void inicializarListasAdyacencia();
+    void registrarAristaDirigida(int indiceOrigen, int indiceDestino, double distanciaMetros, double tiempoSegundos, int indiceArista);
+    void registrarAristaNoDirigida(int indiceOrigen, int indiceDestino, double distanciaMetros, int indiceArista);
 
 public:
-    Grafo();
-
     void construir(vector<Nodo> nodos, vector<Arista> aristas);
 
-    int cantidadNodos();
-    int cantidadAristas();
-    bool existeNodeId(int nodeId);
-    int obtenerIndDesdeNodeId(int nodeId);
-    int obtenerNodeIdDesdeInd(int ind);
+    int cantidadNodos() const;
+    int cantidadAristas() const;
+    bool existeNodeId(int nodeId) const;
+    int obtenerIndiceDesdeNodeId(int nodeId) const;
+    int obtenerNodeIdDesdeIndice(int indiceNodo) const;
 
-    vector<Nodo> obtenerNodos();
-    vector<Arista> obtenerAristas();
-    vector<vector<EntradaAdyacencia>> obtenerAdyDist();
-    vector<vector<EntradaAdyacencia>> obtenerAdyTiempo();
-    vector<vector<EntradaAdyacencia>> obtenerAdyNoDir();
+    const vector<Nodo>& obtenerNodos() const;
+    const vector<Arista>& obtenerAristas() const;
+    const ListaAdyacencia& obtenerAdyacenciaDistancia() const;
+    const ListaAdyacencia& obtenerAdyacenciaTiempo() const;
+    const ListaAdyacencia& obtenerAdyacenciaNoDirigida() const;
 };

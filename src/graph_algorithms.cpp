@@ -17,19 +17,19 @@ double infinito() {
 }
 }
 
-AlgoritmosGrafo::AlgoritmosGrafo(Grafo* grafo) {
+AlgoritmosGrafo::AlgoritmosGrafo(const Grafo* grafo) {
     this->grafo = grafo;
 }
 
-AlgoritmosGrafo::ResultadoDijkstra AlgoritmosGrafo::dijkstra(int indOrigen, vector<vector<EntradaAdyacencia>> adyacencia) {
+AlgoritmosGrafo::ResultadoDijkstra AlgoritmosGrafo::dijkstra(int indiceOrigen, const ListaAdyacencia& adyacencia) const {
     ResultadoDijkstra resultado;
     resultado.distancias.assign(this->grafo->cantidadNodos(), infinito());
     resultado.padre.assign(this->grafo->cantidadNodos(), -1);
     resultado.indiceAristaPadre.assign(this->grafo->cantidadNodos(), -1);
 
     priority_queue<pair<double, int>, vector<pair<double, int>>, greater<>> cola;
-    resultado.distancias[indOrigen] = 0.0;
-    cola.push({0.0, indOrigen});
+    resultado.distancias[indiceOrigen] = 0.0;
+    cola.push({0.0, indiceOrigen});
 
     while (!cola.empty()) {
         auto actual = cola.top();
@@ -42,13 +42,13 @@ AlgoritmosGrafo::ResultadoDijkstra AlgoritmosGrafo::dijkstra(int indOrigen, vect
             continue;
         }
 
-        for (EntradaAdyacencia sig : adyacencia[nodo]) {
-            double nuevaDist = distAct + sig.peso;
-            if (nuevaDist < resultado.distancias[sig.hacia]) {
-                resultado.distancias[sig.hacia] = nuevaDist;
-                resultado.padre[sig.hacia] = nodo;
-                resultado.indiceAristaPadre[sig.hacia] = sig.indiceArista;
-                cola.push({nuevaDist, sig.hacia});
+        for (const AristaAdyacente& siguiente : adyacencia[nodo]) {
+            double nuevaDist = distAct + siguiente.costo;
+            if (nuevaDist < resultado.distancias[siguiente.indiceDestino]) {
+                resultado.distancias[siguiente.indiceDestino] = nuevaDist;
+                resultado.padre[siguiente.indiceDestino] = nodo;
+                resultado.indiceAristaPadre[siguiente.indiceDestino] = siguiente.indiceAristaOriginal;
+                cola.push({nuevaDist, siguiente.indiceDestino});
             }
         }
     }
@@ -56,17 +56,17 @@ AlgoritmosGrafo::ResultadoDijkstra AlgoritmosGrafo::dijkstra(int indOrigen, vect
     return resultado;
 }
 
-double AlgoritmosGrafo::calcularTiempoAristaSegundos(Arista arista) {
-    return arista.distanciaMetros / (arista.velocidadMaxima / 3.6);
+double AlgoritmosGrafo::calcularTiempoAristaSegundos(const Arista& arista) const {
+    return arista.distanciaMetros / (arista.velocidadMaximaKmh / 3.6);
 }
 
-DatosRuta AlgoritmosGrafo::construirDatosRuta(int indOrigen, int indDestino, ResultadoDijkstra resultado) {
-    if (!isfinite(resultado.distancias[indDestino])) {
+DatosRuta AlgoritmosGrafo::construirDatosRuta(int indiceOrigen, int indiceDestino, const ResultadoDijkstra& resultado) const {
+    if (!isfinite(resultado.distancias[indiceDestino])) {
         throw runtime_error("No existe ruta entre los nodos seleccionados");
     }
 
     vector<int> ruta;
-    for (int act = indDestino; act != -1; act = resultado.padre[act]) {
+    for (int act = indiceDestino; act != -1; act = resultado.padre[act]) {
         ruta.push_back(act);
     }
     reverse(ruta.begin(), ruta.end());
@@ -75,18 +75,18 @@ DatosRuta AlgoritmosGrafo::construirDatosRuta(int indOrigen, int indDestino, Res
     datosRuta.distanciaMetros = 0.0;
     datosRuta.tiempoSegundos = 0.0;
 
-    for (int ind : ruta) {
-        datosRuta.recorridoNodeIds.push_back(this->grafo->obtenerNodeIdDesdeInd(ind));
+    for (int indiceNodo : ruta) {
+        datosRuta.recorridoNodeIds.push_back(this->grafo->obtenerNodeIdDesdeIndice(indiceNodo));
     }
 
-    if (!ruta.empty() && ruta.front() != indOrigen) {
+    if (!ruta.empty() && ruta.front() != indiceOrigen) {
         throw runtime_error("La ruta no coincide con el origen");
     }
 
-    vector<Arista> aristas = this->grafo->obtenerAristas();
-    for (int i = 1; i < (int)ruta.size(); ++i) {
-        int indNodo = ruta[i];
-        Arista arista = aristas[resultado.indiceAristaPadre[indNodo]];
+    const vector<Arista>& aristas = this->grafo->obtenerAristas();
+    for (int i = 1; i < static_cast<int>(ruta.size()); ++i) {
+        int indiceNodo = ruta[i];
+        const Arista& arista = aristas[resultado.indiceAristaPadre[indiceNodo]];
         datosRuta.distanciaMetros += arista.distanciaMetros;
         datosRuta.tiempoSegundos += calcularTiempoAristaSegundos(arista);
     }
@@ -95,8 +95,8 @@ DatosRuta AlgoritmosGrafo::construirDatosRuta(int indOrigen, int indDestino, Res
 }
 
 ResultadoAlcance AlgoritmosGrafo::calcularAlcanceVehicular(int nodeIdOrigen, double limiteMetros) {
-    int indOrigen = this->grafo->obtenerIndDesdeNodeId(nodeIdOrigen);
-    ResultadoDijkstra resultado = dijkstra(indOrigen, this->grafo->obtenerAdyDist());
+    int indiceOrigen = this->grafo->obtenerIndiceDesdeNodeId(nodeIdOrigen);
+    ResultadoDijkstra resultado = dijkstra(indiceOrigen, this->grafo->obtenerAdyacenciaDistancia());
 
     int cantidadAlcanzable = 0;
     for (double distancia : resultado.distancias) {
@@ -120,7 +120,7 @@ ResultadoComponentes AlgoritmosGrafo::calcularComponentesDebilmenteConexas() {
     int tamGig = 0;
     int idGig = -1;
     queue<int> cola;
-    vector<vector<EntradaAdyacencia>> ady = this->grafo->obtenerAdyNoDir();
+    const ListaAdyacencia& ady = this->grafo->obtenerAdyacenciaNoDirigida();
 
     for (int ini = 0; ini < this->grafo->cantidadNodos(); ++ini) {
         if (resultado.componentePorNodo[ini] != -1) {
@@ -136,10 +136,10 @@ ResultadoComponentes AlgoritmosGrafo::calcularComponentesDebilmenteConexas() {
             cola.pop();
             resultado.componentes.back().push_back(nodo);
 
-            for (EntradaAdyacencia sig : ady[nodo]) {
-                if (resultado.componentePorNodo[sig.hacia] == -1) {
-                    resultado.componentePorNodo[sig.hacia] = compAct;
-                    cola.push(sig.hacia);
+            for (const AristaAdyacente& siguiente : ady[nodo]) {
+                if (resultado.componentePorNodo[siguiente.indiceDestino] == -1) {
+                    resultado.componentePorNodo[siguiente.indiceDestino] = compAct;
+                    cola.push(siguiente.indiceDestino);
                 }
             }
         }
@@ -165,19 +165,19 @@ ResultadoDiametro AlgoritmosGrafo::calcularDiametroVial() {
     }
 
     ResultadoDiametro mejor;
-    mejor.nodeIdOrigen = this->grafo->obtenerNodeIdDesdeInd(componentes.componentes[componentes.idComponenteGigante].front());
-    mejor.nodeIdDestino = this->grafo->obtenerNodeIdDesdeInd(componentes.componentes[componentes.idComponenteGigante].front());
+    mejor.nodeIdOrigen = this->grafo->obtenerNodeIdDesdeIndice(componentes.componentes[componentes.idComponenteGigante].front());
+    mejor.nodeIdDestino = this->grafo->obtenerNodeIdDesdeIndice(componentes.componentes[componentes.idComponenteGigante].front());
     mejor.distanciaMetros = 0.0;
 
     vector<int> nodosGig = componentes.componentes[componentes.idComponenteGigante];
-    vector<vector<EntradaAdyacencia>> ady = this->grafo->obtenerAdyDist();
-    for (int indOrigen : nodosGig) {
-        ResultadoDijkstra resultado = dijkstra(indOrigen, ady);
-        for (int indDestino : nodosGig) {
-            if (resultado.distancias[indDestino] < infinito() && resultado.distancias[indDestino] > mejor.distanciaMetros) {
-                mejor.nodeIdOrigen = this->grafo->obtenerNodeIdDesdeInd(indOrigen);
-                mejor.nodeIdDestino = this->grafo->obtenerNodeIdDesdeInd(indDestino);
-                mejor.distanciaMetros = resultado.distancias[indDestino];
+    const ListaAdyacencia& ady = this->grafo->obtenerAdyacenciaDistancia();
+    for (int indiceOrigen : nodosGig) {
+        ResultadoDijkstra resultado = dijkstra(indiceOrigen, ady);
+        for (int indiceDestino : nodosGig) {
+            if (resultado.distancias[indiceDestino] < infinito() && resultado.distancias[indiceDestino] > mejor.distanciaMetros) {
+                mejor.nodeIdOrigen = this->grafo->obtenerNodeIdDesdeIndice(indiceOrigen);
+                mejor.nodeIdDestino = this->grafo->obtenerNodeIdDesdeIndice(indiceDestino);
+                mejor.distanciaMetros = resultado.distancias[indiceDestino];
             }
         }
     }
@@ -199,20 +199,20 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() {
 
     vector<tuple<double, int, int>> aristasCand;
     set<pair<int, int>> vistas;
-    vector<vector<EntradaAdyacencia>> ady = this->grafo->obtenerAdyNoDir();
+    const ListaAdyacencia& ady = this->grafo->obtenerAdyacenciaNoDirigida();
 
-    for (int indOrigen : nodosGig) {
-        for (EntradaAdyacencia sig : ady[indOrigen]) {
-            if (indLocal[sig.hacia] == -1) {
+    for (int indiceOrigen : nodosGig) {
+        for (const AristaAdyacente& siguiente : ady[indiceOrigen]) {
+            if (indLocal[siguiente.indiceDestino] == -1) {
                 continue;
             }
-            int a = indLocal[indOrigen];
-            int b = indLocal[sig.hacia];
+            int a = indLocal[indiceOrigen];
+            int b = indLocal[siguiente.indiceDestino];
             int menor = min(a, b);
             int mayor = max(a, b);
             if (!vistas.contains({menor, mayor})) {
                 vistas.insert({menor, mayor});
-                aristasCand.push_back({sig.peso, menor, mayor});
+                aristasCand.push_back({siguiente.costo, menor, mayor});
             }
         }
     }
@@ -241,17 +241,16 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() {
 }
 
 ResultadoRutas AlgoritmosGrafo::compararRutas(int nodeIdOrigen, int nodeIdDestino) {
-    int indOrigen = this->grafo->obtenerIndDesdeNodeId(nodeIdOrigen);
-    int indDestino = this->grafo->obtenerIndDesdeNodeId(nodeIdDestino);
+    int indiceOrigen = this->grafo->obtenerIndiceDesdeNodeId(nodeIdOrigen);
+    int indiceDestino = this->grafo->obtenerIndiceDesdeNodeId(nodeIdDestino);
 
-    ResultadoDijkstra porDist = dijkstra(indOrigen, this->grafo->obtenerAdyDist());
-    ResultadoDijkstra porTiempo = dijkstra(indOrigen, this->grafo->obtenerAdyTiempo());
+    ResultadoDijkstra porDist = dijkstra(indiceOrigen, this->grafo->obtenerAdyacenciaDistancia());
+    ResultadoDijkstra porTiempo = dijkstra(indiceOrigen, this->grafo->obtenerAdyacenciaTiempo());
 
     ResultadoRutas resultado;
     resultado.nodeIdOrigen = nodeIdOrigen;
     resultado.nodeIdDestino = nodeIdDestino;
-    resultado.rutaPorDistancia = construirDatosRuta(indOrigen, indDestino, porDist);
-    resultado.rutaPorTiempo = construirDatosRuta(indOrigen, indDestino, porTiempo);
+    resultado.rutaPorDistancia = construirDatosRuta(indiceOrigen, indiceDestino, porDist);
+    resultado.rutaPorTiempo = construirDatosRuta(indiceOrigen, indiceDestino, porTiempo);
     return resultado;
 }
-

@@ -5,23 +5,23 @@
 using namespace std;
 
 struct Nodo {
-    int id;
-    double lat;
-    double lon;
+    int nodeId;
+    double latitud;
+    double longitud;
 };
 
 struct Arista {
-    long long idOsm;
-    int idOrigen;
-    int idDestino;
+    long long osmWayId;
+    int nodeIdOrigen;
+    int nodeIdDestino;
     double distanciaMetros;
     string claseVia;
-    int esUnSoloSentido;
-    double velocidadMaxima;
+    bool unSoloSentido;
+    double velocidadMaximaKmh;
 };
 
-struct EntradaAdyacencia {
-    int hacia;
-    double peso;
-    int indiceArista;
+struct AristaAdyacente {
+    int indiceDestino;
+    double costo;
+    int indiceAristaOriginal;
 };

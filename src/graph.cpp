@@ -13,98 +13,108 @@ double convertirKmHams(double kilometrosPorHora) {
 }
 }
 
-Grafo::Grafo() {
+void Grafo::reconstruirIndiceNodos() {
+    this->indicePorNodeId.clear();
+    for (int indiceNodo = 0; indiceNodo < static_cast<int>(this->nodos.size()); ++indiceNodo) {
+        this->indicePorNodeId[this->nodos[indiceNodo].nodeId] = indiceNodo;
+    }
+}
+
+void Grafo::inicializarListasAdyacencia() {
+    this->adyacenciaDistancia.assign(this->nodos.size(), {});
+    this->adyacenciaTiempo.assign(this->nodos.size(), {});
+    this->adyacenciaNoDirigida.assign(this->nodos.size(), {});
+}
+
+void Grafo::registrarAristaDirigida(int indiceOrigen, int indiceDestino, double distanciaMetros, double tiempoSegundos, int indiceArista) {
+    this->adyacenciaDistancia[indiceOrigen].push_back({indiceDestino, distanciaMetros, indiceArista});
+    this->adyacenciaTiempo[indiceOrigen].push_back({indiceDestino, tiempoSegundos, indiceArista});
+}
+
+void Grafo::registrarAristaNoDirigida(int indiceOrigen, int indiceDestino, double distanciaMetros, int indiceArista) {
+    this->adyacenciaNoDirigida[indiceOrigen].push_back({indiceDestino, distanciaMetros, indiceArista});
+    this->adyacenciaNoDirigida[indiceDestino].push_back({indiceOrigen, distanciaMetros, indiceArista});
 }
 
 void Grafo::construir(vector<Nodo> nodos, vector<Arista> aristas) {
-    this->nodos = nodos;
-    this->aristas = aristas;
-    this->indPorNodeId.clear();
-
-    for (int i = 0; i < (int)this->nodos.size(); ++i) {
-        this->indPorNodeId[this->nodos[i].id] = i;
-    }
-
-    this->adyDist.assign(this->nodos.size(), {});
-    this->adyTiempo.assign(this->nodos.size(), {});
-    this->adyNoDir.assign(this->nodos.size(), {});
+    this->nodos = move(nodos);
+    this->aristas = move(aristas);
+    reconstruirIndiceNodos();
+    inicializarListasAdyacencia();
 
     set<pair<int, int>> vistasDir;
     set<pair<int, int>> vistasNoDir;
 
-    for (int indArista = 0; indArista < (int)this->aristas.size(); ++indArista) {
-        Arista arista = this->aristas[indArista];
-        auto iterOrigen = this->indPorNodeId.find(arista.idOrigen);
-        auto iterDestino = this->indPorNodeId.find(arista.idDestino);
-        if (iterOrigen == this->indPorNodeId.end() || iterDestino == this->indPorNodeId.end()) {
+    for (int indiceArista = 0; indiceArista < static_cast<int>(this->aristas.size()); ++indiceArista) {
+        const Arista& arista = this->aristas[indiceArista];
+        auto iterOrigen = this->indicePorNodeId.find(arista.nodeIdOrigen);
+        auto iterDestino = this->indicePorNodeId.find(arista.nodeIdDestino);
+        if (iterOrigen == this->indicePorNodeId.end() || iterDestino == this->indicePorNodeId.end()) {
             continue;
         }
 
-        int indOrigen = iterOrigen->second;
-        int indDestino = iterDestino->second;
-        double tiempoSeg = arista.distanciaMetros / convertirKmHams(arista.velocidadMaxima);
+        const int indiceOrigen = iterOrigen->second;
+        const int indiceDestino = iterDestino->second;
+        const double tiempoSegundos = arista.distanciaMetros / convertirKmHams(arista.velocidadMaximaKmh);
 
-        if (!vistasDir.contains({indOrigen, indDestino})) {
-            this->adyDist[indOrigen].push_back({indDestino, arista.distanciaMetros, indArista});
-            this->adyTiempo[indOrigen].push_back({indDestino, tiempoSeg, indArista});
-            vistasDir.insert({indOrigen, indDestino});
+        if (!vistasDir.contains({indiceOrigen, indiceDestino})) {
+            registrarAristaDirigida(indiceOrigen, indiceDestino, arista.distanciaMetros, tiempoSegundos, indiceArista);
+            vistasDir.insert({indiceOrigen, indiceDestino});
         }
 
-        if (arista.esUnSoloSentido == 0 && !vistasDir.contains({indDestino, indOrigen})) {
-            this->adyDist[indDestino].push_back({indOrigen, arista.distanciaMetros, indArista});
-            this->adyTiempo[indDestino].push_back({indOrigen, tiempoSeg, indArista});
-            vistasDir.insert({indDestino, indOrigen});
+        if (!arista.unSoloSentido && !vistasDir.contains({indiceDestino, indiceOrigen})) {
+            registrarAristaDirigida(indiceDestino, indiceOrigen, arista.distanciaMetros, tiempoSegundos, indiceArista);
+            vistasDir.insert({indiceDestino, indiceOrigen});
         }
 
-        pair<int, int> clave = minmax(indOrigen, indDestino);
+        pair<int, int> clave = minmax(indiceOrigen, indiceDestino);
         if (!vistasNoDir.contains(clave)) {
-            this->adyNoDir[indOrigen].push_back({indDestino, arista.distanciaMetros, indArista});
-            this->adyNoDir[indDestino].push_back({indOrigen, arista.distanciaMetros, indArista});
+            registrarAristaNoDirigida(indiceOrigen, indiceDestino, arista.distanciaMetros, indiceArista);
             vistasNoDir.insert(clave);
         }
     }
 }
 
-int Grafo::cantidadNodos() {
-    return (int)this->nodos.size();
+int Grafo::cantidadNodos() const {
+    return static_cast<int>(this->nodos.size());
 }
 
-int Grafo::cantidadAristas() {
-    return (int)this->aristas.size();
+int Grafo::cantidadAristas() const {
+    return static_cast<int>(this->aristas.size());
 }
 
-bool Grafo::existeNodeId(int nodeId) {
-    return this->indPorNodeId.contains(nodeId);
+bool Grafo::existeNodeId(int nodeId) const {
+    return this->indicePorNodeId.contains(nodeId);
 }
 
-int Grafo::obtenerIndDesdeNodeId(int nodeId) {
-    auto iter = this->indPorNodeId.find(nodeId);
-    if (iter == this->indPorNodeId.end()) {
-        throw out_of_range("Node ID not found in graph");
+int Grafo::obtenerIndiceDesdeNodeId(int nodeId) const {
+    auto iter = this->indicePorNodeId.find(nodeId);
+    if (iter == this->indicePorNodeId.end()) {
+        throw out_of_range("El node_id no existe en el grafo");
     }
     return iter->second;
 }
 
-int Grafo::obtenerNodeIdDesdeInd(int ind) {
-    return this->nodos.at(ind).id;
+int Grafo::obtenerNodeIdDesdeIndice(int indiceNodo) const {
+    return this->nodos.at(indiceNodo).nodeId;
 }
 
-vector<Nodo> Grafo::obtenerNodos() {
+const vector<Nodo>& Grafo::obtenerNodos() const {
     return this->nodos;
 }
 
-vector<Arista> Grafo::obtenerAristas() {
+const vector<Arista>& Grafo::obtenerAristas() const {
     return this->aristas;
 }
 
-vector<vector<EntradaAdyacencia>> Grafo::obtenerAdyDist() {
-    return this->adyDist;
+const ListaAdyacencia& Grafo::obtenerAdyacenciaDistancia() const {
+    return this->adyacenciaDistancia;
 }
 
-vector<vector<EntradaAdyacencia>> Grafo::obtenerAdyTiempo() {
-    return this->adyTiempo;
+const ListaAdyacencia& Grafo::obtenerAdyacenciaTiempo() const {
+    return this->adyacenciaTiempo;
 }
 
-vector<vector<EntradaAdyacencia>> Grafo::obtenerAdyNoDir() {
-    return this->adyNoDir;
+const ListaAdyacencia& Grafo::obtenerAdyacenciaNoDirigida() const {
+    return this->adyacenciaNoDirigida;
 }

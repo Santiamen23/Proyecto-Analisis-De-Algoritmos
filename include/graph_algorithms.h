@@ -53,10 +53,10 @@ private:
         vector<int> indiceAristaPadre;
     };
 
-    Grafo* grafo;
+    const Grafo* grafo;
 
 public:
-    AlgoritmosGrafo(Grafo* grafo);
+    explicit AlgoritmosGrafo(const Grafo* grafo);
 
     ResultadoAlcance calcularAlcanceVehicular(int nodeIdOrigen, double limiteMetros = 5000.0);
     ResultadoComponentes calcularComponentesDebilmenteConexas();
@@ -65,7 +65,7 @@ public:
     ResultadoRutas compararRutas(int nodeIdOrigen, int nodeIdDestino);
 
 private:
-    ResultadoDijkstra dijkstra(int indOrigen, vector<vector<EntradaAdyacencia>> adyacencia);
-    DatosRuta construirDatosRuta(int indOrigen, int indDestino, ResultadoDijkstra resultado);
-    double calcularTiempoAristaSegundos(Arista arista);
+    ResultadoDijkstra dijkstra(int indiceOrigen, const ListaAdyacencia& adyacencia) const;
+    DatosRuta construirDatosRuta(int indiceOrigen, int indiceDestino, const ResultadoDijkstra& resultado) const;
+    double calcularTiempoAristaSegundos(const Arista& arista) const;
 };

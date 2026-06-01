@@ -7,9 +7,14 @@
 
 using namespace std;
 
+struct EstadisticasCarga {
+    int registrosCargados{};
+    int registrosDescartados{};
+};
+
 string limpiarEspacios(string texto);
 double parsearVelocidadMaxima(string texto);
 double obtenerVelocidadPorDefecto(string claseVia);
 
-bool cargarNodos(string rutaArchivo, vector<Nodo>& nodos);
-bool cargarAristas(string rutaArchivo, vector<Arista>& aristas);
+bool cargarNodos(const string& rutaArchivo, vector<Nodo>& nodos, EstadisticasCarga& estadisticas);
+bool cargarAristas(const string& rutaArchivo, vector<Arista>& aristas, EstadisticasCarga& estadisticas);
