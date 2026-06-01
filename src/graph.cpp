@@ -1,8 +1,9 @@
 #include "graph.h"
 
 #include <algorithm>
-#include <set>
+#include <cstdint>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 
 using namespace std;
@@ -10,6 +11,11 @@ using namespace std;
 namespace {
 double convertirKmHams(double kilometrosPorHora) {
     return kilometrosPorHora / 3.6;
+}
+
+uint64_t codificarPar(int a, int b) {
+    return (static_cast<uint64_t>(static_cast<uint32_t>(a)) << 32) |
+           static_cast<uint32_t>(b);
 }
 }
 
@@ -42,8 +48,10 @@ void Grafo::construir(vector<Nodo> nodos, vector<Arista> aristas) {
     reconstruirIndiceNodos();
     inicializarListasAdyacencia();
 
-    set<pair<int, int>> vistasDir;
-    set<pair<int, int>> vistasNoDir;
+    unordered_set<uint64_t> vistasDir;
+    unordered_set<uint64_t> vistasNoDir;
+    vistasDir.reserve(this->aristas.size() * 2);
+    vistasNoDir.reserve(this->aristas.size());
 
     for (int indiceArista = 0; indiceArista < static_cast<int>(this->aristas.size()); ++indiceArista) {
         const Arista& arista = this->aristas[indiceArista];
@@ -57,20 +65,23 @@ void Grafo::construir(vector<Nodo> nodos, vector<Arista> aristas) {
         const int indiceDestino = iterDestino->second;
         const double tiempoSegundos = arista.distanciaMetros / convertirKmHams(arista.velocidadMaximaKmh);
 
-        if (!vistasDir.contains({indiceOrigen, indiceDestino})) {
+        const uint64_t claveDir = codificarPar(indiceOrigen, indiceDestino);
+        if (!vistasDir.contains(claveDir)) {
             registrarAristaDirigida(indiceOrigen, indiceDestino, arista.distanciaMetros, tiempoSegundos, indiceArista);
-            vistasDir.insert({indiceOrigen, indiceDestino});
+            vistasDir.insert(claveDir);
         }
 
-        if (!arista.unSoloSentido && !vistasDir.contains({indiceDestino, indiceOrigen})) {
+        const uint64_t claveDirInversa = codificarPar(indiceDestino, indiceOrigen);
+        if (!arista.unSoloSentido && !vistasDir.contains(claveDirInversa)) {
             registrarAristaDirigida(indiceDestino, indiceOrigen, arista.distanciaMetros, tiempoSegundos, indiceArista);
-            vistasDir.insert({indiceDestino, indiceOrigen});
+            vistasDir.insert(claveDirInversa);
         }
 
-        pair<int, int> clave = minmax(indiceOrigen, indiceDestino);
-        if (!vistasNoDir.contains(clave)) {
+        const auto [menor, mayor] = minmax(indiceOrigen, indiceDestino);
+        const uint64_t claveNoDir = codificarPar(menor, mayor);
+        if (!vistasNoDir.contains(claveNoDir)) {
             registrarAristaNoDirigida(indiceOrigen, indiceDestino, arista.distanciaMetros, indiceArista);
-            vistasNoDir.insert(clave);
+            vistasNoDir.insert(claveNoDir);
         }
     }
 }

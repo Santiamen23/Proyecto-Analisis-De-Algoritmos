@@ -3,17 +3,23 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <queue>
-#include <set>
 #include <stdexcept>
 #include <tuple>
+#include <unordered_set>
 
 using namespace std;
 
 namespace {
 double infinito() {
     return numeric_limits<double>::infinity();
+}
+
+uint64_t codificarPar(int a, int b) {
+    return (static_cast<uint64_t>(static_cast<uint32_t>(a)) << 32) |
+           static_cast<uint32_t>(b);
 }
 }
 
@@ -169,7 +175,7 @@ ResultadoDiametro AlgoritmosGrafo::calcularDiametroVial() {
     mejor.nodeIdDestino = this->grafo->obtenerNodeIdDesdeIndice(componentes.componentes[componentes.idComponenteGigante].front());
     mejor.distanciaMetros = 0.0;
 
-    vector<int> nodosGig = componentes.componentes[componentes.idComponenteGigante];
+    const vector<int>& nodosGig = componentes.componentes[componentes.idComponenteGigante];
     const ListaAdyacencia& ady = this->grafo->obtenerAdyacenciaDistancia();
     for (int indiceOrigen : nodosGig) {
         ResultadoDijkstra resultado = dijkstra(indiceOrigen, ady);
@@ -191,30 +197,41 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() {
         throw runtime_error("El grafo no tiene componentes");
     }
 
-    vector<int> nodosGig = componentes.componentes[componentes.idComponenteGigante];
+    const vector<int>& nodosGig = componentes.componentes[componentes.idComponenteGigante];
     vector<int> indLocal(this->grafo->cantidadNodos(), -1);
     for (int i = 0; i < (int)nodosGig.size(); ++i) {
         indLocal[nodosGig[i]] = i;
     }
 
     vector<tuple<double, int, int>> aristasCand;
-    set<pair<int, int>> vistas;
-    const ListaAdyacencia& ady = this->grafo->obtenerAdyacenciaNoDirigida();
+    aristasCand.reserve(this->grafo->cantidadAristas());
 
-    for (int indiceOrigen : nodosGig) {
-        for (const AristaAdyacente& siguiente : ady[indiceOrigen]) {
-            if (indLocal[siguiente.indiceDestino] == -1) {
-                continue;
-            }
-            int a = indLocal[indiceOrigen];
-            int b = indLocal[siguiente.indiceDestino];
-            int menor = min(a, b);
-            int mayor = max(a, b);
-            if (!vistas.contains({menor, mayor})) {
-                vistas.insert({menor, mayor});
-                aristasCand.push_back({siguiente.costo, menor, mayor});
-            }
+    unordered_set<uint64_t> vistas;
+    vistas.reserve(this->grafo->cantidadAristas());
+
+    for (const Arista& arista : this->grafo->obtenerAristas()) {
+        if (!this->grafo->existeNodeId(arista.nodeIdOrigen) || !this->grafo->existeNodeId(arista.nodeIdDestino)) {
+            continue;
         }
+
+        const int indiceOrigen = this->grafo->obtenerIndiceDesdeNodeId(arista.nodeIdOrigen);
+        const int indiceDestino = this->grafo->obtenerIndiceDesdeNodeId(arista.nodeIdDestino);
+
+        if (indLocal[indiceOrigen] == -1 || indLocal[indiceDestino] == -1) {
+            continue;
+        }
+
+        const int a = indLocal[indiceOrigen];
+        const int b = indLocal[indiceDestino];
+        const int menor = min(a, b);
+        const int mayor = max(a, b);
+        const uint64_t clave = codificarPar(menor, mayor);
+        if (vistas.contains(clave)) {
+            continue;
+        }
+
+        vistas.insert(clave);
+        aristasCand.push_back({arista.distanciaMetros, menor, mayor});
     }
 
     sort(aristasCand.begin(), aristasCand.end());
@@ -223,7 +240,7 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() {
     double distTotal = 0.0;
     int aristasUsadas = 0;
 
-    for (auto dato : aristasCand) {
+    for (const auto& dato : aristasCand) {
         double peso = get<0>(dato);
         int a = get<1>(dato);
         int b = get<2>(dato);
