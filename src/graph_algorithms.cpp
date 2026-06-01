@@ -100,7 +100,7 @@ DatosRuta AlgoritmosGrafo::construirDatosRuta(int indiceOrigen, int indiceDestin
     return datosRuta;
 }
 
-ResultadoAlcance AlgoritmosGrafo::calcularAlcanceVehicular(int nodeIdOrigen, double limiteMetros) {
+ResultadoAlcance AlgoritmosGrafo::calcularAlcanceVehicular(int nodeIdOrigen, double limiteMetros) const {
     int indiceOrigen = this->grafo->obtenerIndiceDesdeNodeId(nodeIdOrigen);
     ResultadoDijkstra resultado = dijkstra(indiceOrigen, this->grafo->obtenerAdyacenciaDistancia());
 
@@ -118,7 +118,7 @@ ResultadoAlcance AlgoritmosGrafo::calcularAlcanceVehicular(int nodeIdOrigen, dou
     return salida;
 }
 
-ResultadoComponentes AlgoritmosGrafo::calcularComponentesDebilmenteConexas() {
+ResultadoComponentes AlgoritmosGrafo::calcularComponentesDebilmenteConexas() const {
     ResultadoComponentes resultado;
     resultado.componentePorNodo.assign(this->grafo->cantidadNodos(), -1);
 
@@ -164,7 +164,7 @@ ResultadoComponentes AlgoritmosGrafo::calcularComponentesDebilmenteConexas() {
     return resultado;
 }
 
-ResultadoDiametro AlgoritmosGrafo::calcularDiametroVial() {
+ResultadoDiametro AlgoritmosGrafo::calcularDiametroVial() const {
     ResultadoComponentes componentes = calcularComponentesDebilmenteConexas();
     if (componentes.idComponenteGigante == -1) {
         throw runtime_error("El grafo no tiene componentes");
@@ -191,7 +191,7 @@ ResultadoDiametro AlgoritmosGrafo::calcularDiametroVial() {
     return mejor;
 }
 
-ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() {
+ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() const {
     ResultadoComponentes componentes = calcularComponentesDebilmenteConexas();
     if (componentes.idComponenteGigante == -1) {
         throw runtime_error("El grafo no tiene componentes");
@@ -257,7 +257,7 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() {
     return resultado;
 }
 
-ResultadoRutas AlgoritmosGrafo::compararRutas(int nodeIdOrigen, int nodeIdDestino) {
+ResultadoRutas AlgoritmosGrafo::compararRutas(int nodeIdOrigen, int nodeIdDestino) const {
     int indiceOrigen = this->grafo->obtenerIndiceDesdeNodeId(nodeIdOrigen);
     int indiceDestino = this->grafo->obtenerIndiceDesdeNodeId(nodeIdDestino);
 

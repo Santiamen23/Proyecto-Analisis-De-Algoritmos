@@ -58,11 +58,11 @@ private:
 public:
     explicit AlgoritmosGrafo(const Grafo* grafo);
 
-    ResultadoAlcance calcularAlcanceVehicular(int nodeIdOrigen, double limiteMetros = 5000.0);
-    ResultadoComponentes calcularComponentesDebilmenteConexas();
-    ResultadoDiametro calcularDiametroVial();
-    ResultadoMst calcularRedEmergenciaMinima();
-    ResultadoRutas compararRutas(int nodeIdOrigen, int nodeIdDestino);
+    ResultadoAlcance calcularAlcanceVehicular(int nodeIdOrigen, double limiteMetros = 5000.0) const;
+    ResultadoComponentes calcularComponentesDebilmenteConexas() const;
+    ResultadoDiametro calcularDiametroVial() const;
+    ResultadoMst calcularRedEmergenciaMinima() const;
+    ResultadoRutas compararRutas(int nodeIdOrigen, int nodeIdDestino) const;
 
 private:
     ResultadoDijkstra dijkstra(int indiceOrigen, const ListaAdyacencia& adyacencia) const;
