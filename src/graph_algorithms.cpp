@@ -3,23 +3,17 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 #include <limits>
 #include <queue>
+#include <set>
 #include <stdexcept>
 #include <tuple>
-#include <unordered_set>
 
 using namespace std;
 
 namespace {
 double infinito() {
     return numeric_limits<double>::infinity();
-}
-
-uint64_t codificarPar(int a, int b) {
-    return (static_cast<uint64_t>(static_cast<uint32_t>(a)) << 32) |
-           static_cast<uint32_t>(b);
 }
 }
 
@@ -206,8 +200,7 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() const {
     vector<tuple<double, int, int>> aristasCand;
     aristasCand.reserve(this->grafo->cantidadAristas());
 
-    unordered_set<uint64_t> vistas;
-    vistas.reserve(this->grafo->cantidadAristas());
+    set<pair<int, int>> vistas;
 
     for (const Arista& arista : this->grafo->obtenerAristas()) {
         if (!this->grafo->existeNodeId(arista.nodeIdOrigen) || !this->grafo->existeNodeId(arista.nodeIdDestino)) {
@@ -225,7 +218,7 @@ ResultadoMst AlgoritmosGrafo::calcularRedEmergenciaMinima() const {
         const int b = indLocal[indiceDestino];
         const int menor = min(a, b);
         const int mayor = max(a, b);
-        const uint64_t clave = codificarPar(menor, mayor);
+        const pair<int, int> clave = {menor, mayor};
         if (vistas.contains(clave)) {
             continue;
         }
